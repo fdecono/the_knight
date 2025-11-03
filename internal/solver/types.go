@@ -15,7 +15,4 @@ type SolveResult struct {
 	Success      bool
 	Moves        []MoveUpdate
 	AttemptCount int
-	Duration     int64 // nanoseconds
-	StartTime    int64 // Unix timestamp in nanoseconds
-	EndTime      int64 // Unix timestamp in nanoseconds
 }

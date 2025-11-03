@@ -42,15 +42,10 @@ func (s *Solver) Solve(ctx context.Context, boardSize int, startPos board.Positi
 	// Drain channels to ensure clean state
 	s.clearChannels()
 
-	// Record start time right before solving begins
-	startTime := time.Now()
-	startTimeNs := startTime.UnixNano()
-
 	// Run solver in goroutine
 	var wg sync.WaitGroup
 	var success bool
 	var solveErr error
-	var endTimeNs int64
 
 	wg.Add(1)
 
@@ -83,36 +78,18 @@ func (s *Solver) Solve(ctx context.Context, boardSize int, startPos board.Positi
 	// Wait for completion or context cancellation
 	select {
 	case success = <-s.doneChan:
-		// Solution found or failed
+		// Solution found or failed - wait for goroutine to complete
+		wg.Wait()
 	case <-ctx.Done():
 		// Context cancelled - clear channels and return
 		solveErr = ctx.Err()
 		s.clearChannels()
 		wg.Wait()
-		endTime := time.Now()
-		endTimeNs := endTime.UnixNano()
 		return &SolveResult{
 			Success:      false,
 			AttemptCount: s.getAttemptCount(),
-			Duration:     time.Since(startTime).Nanoseconds(),
-			StartTime:    startTimeNs,
-			EndTime:      endTimeNs,
 		}, solveErr
 	}
-
-	// Wait for goroutine to finish
-	wg.Wait()
-
-	// Record end time
-	endTime := time.Now()
-	endTimeNs = endTime.UnixNano()
-
-	// Calculate duration from start to finish
-	duration := time.Since(startTime).Nanoseconds()
-
-	// Debug: Log duration to verify calculation
-	// Uncomment for debugging:
-	// log.Printf("Solve duration: %d nanoseconds = %.6f milliseconds", duration, float64(duration)/1e6)
 
 	// Only keep moves if solution was successful
 	var finalMoves []MoveUpdate
@@ -133,9 +110,6 @@ func (s *Solver) Solve(ctx context.Context, boardSize int, startPos board.Positi
 		Success:      success,
 		Moves:        finalMoves,
 		AttemptCount: s.getAttemptCount(),
-		Duration:     duration,
-		StartTime:    startTimeNs,
-		EndTime:      endTimeNs,
 	}, nil
 }
 

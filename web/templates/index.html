@@ -6,51 +6,116 @@
     <title>Knight's Tour Solver</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Orbitron', 'Segoe UI', monospace;
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            background: #f5f5f5;
+            background: #0a0a0f;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(138, 43, 226, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(147, 51, 234, 0.15) 0%, transparent 50%),
+                linear-gradient(180deg, #0a0a0f 0%, #1a0a2e 100%);
+            color: #e0b0ff;
+            min-height: 100vh;
         }
+        
         h1 {
             text-align: center;
-            color: #333;
+            color: #b794f6;
+            font-size: 2.5em;
+            font-weight: 900;
+            text-shadow: 
+                0 0 10px #9333ea,
+                0 0 20px #9333ea,
+                0 0 30px #9333ea,
+                0 0 40px #9333ea;
+            margin-bottom: 30px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
         }
+        
         .controls {
             text-align: center;
-            margin: 20px 0;
+            margin: 30px 0;
         }
+        
         button {
-            padding: 10px 20px;
+            padding: 12px 30px;
             font-size: 16px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6b21a8 0%, #9333ea 100%);
+            color: #ffffff;
+            border: 2px solid #b794f6;
+            border-radius: 0;
             cursor: pointer;
-            margin: 0 10px;
+            margin: 0 15px;
+            position: relative;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 
+                0 0 10px rgba(147, 51, 234, 0.5),
+                inset 0 0 10px rgba(147, 51, 234, 0.2);
         }
+        
         button:hover {
-            background: #45a049;
+            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+            box-shadow: 
+                0 0 20px rgba(147, 51, 234, 0.8),
+                0 0 30px rgba(147, 51, 234, 0.6),
+                inset 0 0 15px rgba(147, 51, 234, 0.3);
+            transform: translateY(-2px);
+            border-color: #c084fc;
         }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
         button:disabled {
-            background: #ccc;
+            background: linear-gradient(135deg, #1a0a2e 0%, #2d1b3d 100%);
+            border-color: #4c1d95;
+            color: #6b7280;
             cursor: not-allowed;
+            box-shadow: none;
+            opacity: 0.5;
         }
+        
         .status {
             text-align: center;
-            margin: 20px 0;
+            margin: 25px 0;
             font-weight: bold;
+            font-size: 1.2em;
+            color: #c084fc;
+            text-shadow: 0 0 10px rgba(192, 132, 252, 0.8);
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
+        
         .chessboard {
             display: inline-block;
-            border: 3px solid #333;
+            border: 3px solid #9333ea;
             margin: 20px auto;
+            box-shadow: 
+                0 0 20px rgba(147, 51, 234, 0.6),
+                0 0 40px rgba(147, 51, 234, 0.4),
+                inset 0 0 20px rgba(147, 51, 234, 0.2);
+            background: rgba(10, 10, 15, 0.8);
+            padding: 5px;
         }
+        
         .chessboard-row {
             display: flex;
         }
+        
         .chessboard-cell {
             width: 60px;
             height: 60px;
@@ -59,82 +124,185 @@
             justify-content: center;
             font-weight: bold;
             font-size: 14px;
-            border: 1px solid #999;
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            color: #e0b0ff;
+            text-shadow: 0 0 5px rgba(224, 176, 255, 0.8);
+            transition: all 0.2s ease;
         }
+        
         .chessboard-cell.light {
-            background-color: #f0d9b5;
+            background-color: #1a0a2e;
         }
+        
         .chessboard-cell.dark {
-            background-color: #b58863;
+            background-color: #0f0a1a;
         }
+        
         .chessboard-cell.current {
-            background-color: #ff6b6b !important;
-            animation: pulse 0.5s;
+            background-color: #9333ea !important;
+            animation: cyberpulse 0.5s;
+            box-shadow: 
+                0 0 15px rgba(147, 51, 234, 1),
+                inset 0 0 10px rgba(192, 132, 252, 0.5);
         }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
+        
+        @keyframes cyberpulse {
+            0% { 
+                transform: scale(1);
+                box-shadow: 0 0 10px rgba(147, 51, 234, 0.8);
+            }
+            50% { 
+                transform: scale(1.1);
+                box-shadow: 
+                    0 0 25px rgba(147, 51, 234, 1),
+                    0 0 40px rgba(147, 51, 234, 0.8);
+            }
+            100% { 
+                transform: scale(1);
+                box-shadow: 0 0 15px rgba(147, 51, 234, 1);
+            }
         }
+        
         .stats {
             text-align: center;
             margin: 20px 0;
+            color: #c084fc;
+            text-shadow: 0 0 10px rgba(192, 132, 252, 0.6);
         }
+        
         .timing-info {
             text-align: center;
-            margin: 20px 0;
-            padding: 15px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 30px 0;
+            padding: 25px;
+            background: rgba(26, 10, 46, 0.8);
+            border: 2px solid #9333ea;
+            border-radius: 0;
+            box-shadow: 
+                0 0 20px rgba(147, 51, 234, 0.5),
+                inset 0 0 20px rgba(147, 51, 234, 0.1);
+            backdrop-filter: blur(10px);
         }
+        
         .timing-info h3 {
-            margin: 0 0 10px 0;
-            color: #333;
-            font-size: 18px;
+            margin: 0 0 15px 0;
+            color: #b794f6;
+            font-size: 1.5em;
+            font-weight: 700;
+            text-shadow: 0 0 15px rgba(183, 148, 246, 0.8);
+            letter-spacing: 3px;
+            text-transform: uppercase;
         }
+        
         .timing-info div {
-            margin: 5px 0;
+            margin: 8px 0;
             font-size: 14px;
-            color: #666;
+            color: #e0b0ff;
+            letter-spacing: 1px;
         }
+        
         .timing-info .value {
             font-weight: bold;
-            color: #4CAF50;
+            color: #c084fc;
+            text-shadow: 0 0 10px rgba(192, 132, 252, 0.8);
         }
+        
         .start-position-selector {
             text-align: center;
-            margin: 20px 0;
+            margin: 25px 0;
         }
+        
         .start-position-selector input {
-            width: 60px;
-            padding: 8px;
-            margin: 0 5px;
+            width: 70px;
+            padding: 10px;
+            margin: 0 8px;
             font-size: 16px;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
             text-align: center;
-            border: 2px solid #4CAF50;
-            border-radius: 4px;
+            background: rgba(26, 10, 46, 0.8);
+            border: 2px solid #9333ea;
+            border-radius: 0;
+            color: #e0b0ff;
+            box-shadow: 
+                0 0 10px rgba(147, 51, 234, 0.4),
+                inset 0 0 10px rgba(147, 51, 234, 0.1);
+            transition: all 0.3s ease;
         }
+        
+        .start-position-selector input:focus {
+            outline: none;
+            border-color: #c084fc;
+            box-shadow: 
+                0 0 20px rgba(192, 132, 252, 0.6),
+                inset 0 0 15px rgba(147, 51, 234, 0.2);
+        }
+        
         .start-position-selector label {
-            font-weight: bold;
-            margin: 0 10px;
+            font-weight: 700;
+            margin: 0 12px;
+            color: #b794f6;
+            text-shadow: 0 0 10px rgba(183, 148, 246, 0.6);
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
+        
+        .start-position-selector span {
+            color: #9333ea !important;
+            font-size: 12px !important;
+            text-shadow: 0 0 5px rgba(147, 51, 234, 0.6);
+        }
+        
         .chessboard-cell.start-position {
-            background-color: #4CAF50 !important;
-            color: white;
+            background: linear-gradient(135deg, #6b21a8 0%, #9333ea 100%) !important;
+            color: #ffffff;
             font-weight: bold;
             cursor: pointer;
+            box-shadow: 
+                0 0 15px rgba(147, 51, 234, 0.8),
+                inset 0 0 10px rgba(192, 132, 252, 0.3);
+            border-color: #c084fc;
         }
+        
         .chessboard-cell.start-position:hover {
-            background-color: #45a049 !important;
+            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
+            box-shadow: 
+                0 0 25px rgba(147, 51, 234, 1),
+                0 0 35px rgba(147, 51, 234, 0.8),
+                inset 0 0 15px rgba(192, 132, 252, 0.5);
         }
+        
         .chessboard-cell.selectable {
             cursor: pointer;
         }
+        
         .chessboard-cell.selectable:hover {
-            opacity: 0.8;
-            transform: scale(1.05);
+            opacity: 0.9;
+            transform: scale(1.08);
             transition: all 0.2s;
+            border-color: #9333ea;
+            box-shadow: 0 0 15px rgba(147, 51, 234, 0.6);
+        }
+        
+        /* Glitch effect for visited cells */
+        .chessboard-cell.visited {
+            position: relative;
+        }
+        
+        .chessboard-cell.visited::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: inherit;
+            opacity: 0;
+            animation: glitch 0.1s infinite;
+        }
+        
+        @keyframes glitch {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.1; }
         }
     </style>
 </head>
@@ -159,14 +327,6 @@
     
     <div style="text-align: center;">
         <div id="chessboard" class="chessboard"></div>
-    </div>
-
-    <div class="timing-info" id="timingInfo" style="display: none;">
-        <h3>Timing Information</h3>
-        <div>Start Time: <span class="value" id="startTime">-</span></div>
-        <div>End Time: <span class="value" id="endTime">-</span></div>
-        <div>Duration: <span class="value" id="duration">-</span></div>
-        <div style="margin-top: 10px;">Attempts: <span class="value" id="attemptCount">-</span></div>
     </div>
 
     <div class="stats" id="stats"></div>
@@ -195,9 +355,9 @@
                     cell.className = `chessboard-cell ${isLight ? 'light' : 'dark'} selectable`;
                     cell.id = `cell-${i}-${j}`;
                     cell.textContent = '';
-                    // Make cells clickable to select starting position (only when not solving)
+                    // Make cells clickable to select starting position (only when board is empty and not solving)
                     cell.onclick = function() {
-                        if (!isSolving) {
+                        if (!isSolving && isBoardEmpty()) {
                             setStartPosition(i, j);
                         }
                     };
@@ -230,10 +390,14 @@
         }
 
         function highlightStartPosition() {
-            // Remove previous start position highlight
+            // Remove previous start position highlight and clear 'S' text
             const cells = document.querySelectorAll('.chessboard-cell');
             cells.forEach(cell => {
                 cell.classList.remove('start-position');
+                // Clear 'S' text from any cell that previously had it
+                if (cell.textContent === 'S') {
+                    cell.textContent = '';
+                }
             });
             
             // Highlight new start position
@@ -243,23 +407,60 @@
                 startCell.textContent = 'S'; // Mark with 'S' for Start
             }
         }
+        
+        // Check if board is empty (no moves placed)
+        function isBoardEmpty() {
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    if (board[i][j] > 0) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        // Update cell clickability based on board state
+        function updateCellClickability() {
+            const isEmpty = isBoardEmpty();
+            const cells = document.querySelectorAll('.chessboard-cell');
+            cells.forEach(cell => {
+                if (isEmpty && !isSolving) {
+                    cell.classList.add('selectable');
+                    cell.style.cursor = 'pointer';
+                } else {
+                    cell.classList.remove('selectable');
+                    cell.style.cursor = 'default';
+                }
+            });
+        }
 
-        // Calculate color gradient from #4CAF50 (green) to #8827a0 (purple) based on move number
+        // Calculate cyberpunk purple color gradient based on move number
         function getMoveColor(moveNumber, totalMoves) {
-            if (totalMoves === 0 || totalMoves === 1) return '#4CAF50'; // Default starting color
+            if (totalMoves === 0 || totalMoves === 1) return '#6b21a8'; // Default starting color (dark purple)
             
             // Normalize move number to 0-1 range
             const ratio = (moveNumber - 1) / (totalMoves - 1);
             
-            // Starting color: #4CAF50 (green) - RGB(76, 175, 80)
-            // Ending color: #8827a0 (purple) - RGB(136, 39, 160)
-            const startR = 76, startG = 175, startB = 80;
-            const endR = 136, endG = 39, endB = 160;
+            // Cyberpunk purple gradient: Dark purple -> Medium purple -> Bright purple
+            // Starting color: #6b21a8 (dark purple) - RGB(107, 33, 168)
+            // Middle color: #9333ea (medium purple) - RGB(147, 51, 234)
+            // Ending color: #c084fc (bright purple) - RGB(192, 132, 252)
             
-            // Interpolate each RGB component
-            const r = Math.round(startR + (endR - startR) * ratio);
-            const g = Math.round(startG + (endG - startG) * ratio);
-            const b = Math.round(startB + (endB - startB) * ratio);
+            let r, g, b;
+            if (ratio < 0.5) {
+                // First half: dark purple to medium purple
+                const t = ratio * 2; // 0 to 1 for first half
+                r = Math.round(107 + (147 - 107) * t);
+                g = Math.round(33 + (51 - 33) * t);
+                b = Math.round(168 + (234 - 168) * t);
+            } else {
+                // Second half: medium purple to bright purple
+                const t = (ratio - 0.5) * 2; // 0 to 1 for second half
+                r = Math.round(147 + (192 - 147) * t);
+                g = Math.round(51 + (132 - 51) * t);
+                b = Math.round(234 + (252 - 234) * t);
+            }
             
             return `rgb(${r}, ${g}, ${b})`;
         }
@@ -267,6 +468,8 @@
         function updateCell(row, col, value) {
             const cell = document.getElementById(`cell-${row}-${col}`);
             if (cell) {
+                const wasEmpty = isBoardEmpty();
+                
                 // Remove start position marker when placing a move
                 if (value > 0) {
                     cell.textContent = value;
@@ -275,9 +478,17 @@
                     // Apply chromatic scale color
                     const color = getMoveColor(value, totalMoves);
                     cell.style.backgroundColor = color;
+                    // Update clickability when board transitions from empty to having moves
+                    if (wasEmpty) {
+                        updateCellClickability();
+                    }
                 } else if (!cell.classList.contains('start-position')) {
                     cell.textContent = '';
                     cell.style.backgroundColor = ''; // Reset to default
+                    // Update clickability if board becomes empty after clearing
+                    if (!wasEmpty && isBoardEmpty()) {
+                        updateCellClickability();
+                    }
                 }
                 
                 cell.classList.remove('visited', 'current');
@@ -301,18 +512,21 @@
         function startSolve() {
             if (isSolving) return;
             
+            // Ensure startPosition is up-to-date with input fields
+            updateStartPositionFromInput();
+            
             isSolving = true;
             document.getElementById('solveBtn').disabled = true;
             document.getElementById('startX').disabled = true;
             document.getElementById('startY').disabled = true;
             document.getElementById('status').textContent = 'Solving...';
-            document.getElementById('timingInfo').style.display = 'none'; // Hide timing until complete
             moveQueue = [];
             board = Array(boardSize).fill(null).map(() => Array(boardSize).fill(0));
             totalMoves = boardSize * boardSize; // Set total moves for color calculation
             initBoard();
             // Show start position marker (will be replaced by move 1)
             highlightStartPosition();
+            updateCellClickability(); // Disable cell clicking during solving
 
             // Start SSE connection for moves
             const eventSource = new EventSource('/api/moves/stream');
@@ -337,50 +551,8 @@
                                 if (result.Success && result.Moves) {
                                     moveQueue = result.Moves.filter(m => !m.IsBacktrack);
                                     
-                                    // Display timing information from backend
-                                    // Backend provides StartTime and EndTime as Unix timestamps in nanoseconds
-                                    // Convert to Date objects and calculate duration
-                                    const startTimeNs = BigInt(result.StartTime);
-                                    const endTimeNs = BigInt(result.EndTime);
-                                    
-                                    // Convert nanoseconds to milliseconds for Date constructor
-                                    const startTimeMs = Number(startTimeNs / BigInt(1000000));
-                                    const endTimeMs = Number(endTimeNs / BigInt(1000000));
-                                    const startTime = new Date(startTimeMs);
-                                    const endTime = new Date(endTimeMs);
-                                    
-                                    // Calculate duration: (EndTime - StartTime) in nanoseconds, then convert to milliseconds
-                                    const durationNs = Number(endTimeNs - startTimeNs);
-                                    const durationMs = durationNs / 1000000; // Convert nanoseconds to milliseconds
-                                    
-                                    // Format times with milliseconds
-                                    const formatTime = (date) => {
-                                        const hours = date.getHours().toString().padStart(2, '0');
-                                        const minutes = date.getMinutes().toString().padStart(2, '0');
-                                        const seconds = date.getSeconds().toString().padStart(2, '0');
-                                        const ms = date.getMilliseconds().toString().padStart(3, '0');
-                                        return `${hours}:${minutes}:${seconds}.${ms}`;
-                                    };
-                                    
-                                    document.getElementById('startTime').textContent = formatTime(startTime);
-                                    document.getElementById('endTime').textContent = formatTime(endTime);
-                                    
-                                    // Format duration in milliseconds
-                                    let durationText;
-                                    if (durationMs < 0.001) {
-                                        // For very fast solves (< 1 microsecond), show with more precision
-                                        durationText = durationMs.toFixed(6) + ' ms';
-                                    } else if (durationMs < 1) {
-                                        // For fast solves (< 1ms), show 3 decimal places
-                                        durationText = durationMs.toFixed(3) + ' ms';
-                                    } else {
-                                        // For slower solves, show 2 decimal places
-                                        durationText = durationMs.toFixed(2) + ' ms';
-                                    }
-                                    document.getElementById('duration').textContent = durationText;
-                                    document.getElementById('attemptCount').textContent = result.AttemptCount.toLocaleString();
-                                    
-                                    document.getElementById('timingInfo').style.display = 'block';
+                                    // Display attempt count
+                                    document.getElementById('stats').textContent = `Attempts: ${result.AttemptCount.toLocaleString()}`;
                                     
                                     renderMovesAnimated();
                                 }
@@ -388,7 +560,6 @@
                     } else {
                         // Clear board on failure
                         initBoard();
-                        document.getElementById('timingInfo').style.display = 'none';
                     }
                     return;
                 }
@@ -399,7 +570,7 @@
                 } else {
                     // Handle backtrack: clear the cell (for visualization during solving)
                     // But note: we'll clear all and re-render after solution
-                    updateCell(data.Position.Y, data.Position.X, 0);
+                    updateCell(data.Position.X, data.Position.Y, 0);
                     // Remove from queue if it exists
                     moveQueue = moveQueue.filter(m => 
                         !(m.Position.X === data.Position.X && m.Position.Y === data.Position.Y)
@@ -444,8 +615,8 @@
                 }
 
                 const move = moveQueue[moveIndex];
-                board[move.Position.Y][move.Position.X] = move.MoveNumber;
-                updateCell(move.Position.Y, move.Position.X, move.MoveNumber);
+                board[move.Position.X][move.Position.Y] = move.MoveNumber;
+                updateCell(move.Position.X, move.Position.Y, move.MoveNumber);
                 moveIndex++;
             }, 250); // 0.25 seconds between moves
         }
@@ -455,12 +626,16 @@
                 clearInterval(renderInterval);
                 renderInterval = null;
             }
+            isSolving = false;
             moveQueue = [];
             board = Array(boardSize).fill(null).map(() => Array(boardSize).fill(0));
-            document.getElementById('timingInfo').style.display = 'none';
+            document.getElementById('solveBtn').disabled = false;
+            document.getElementById('startX').disabled = false;
+            document.getElementById('startY').disabled = false;
             initBoard();
             // Re-highlight start position after reset
             highlightStartPosition();
+            updateCellClickability(); // Re-enable cell clicking
             document.getElementById('status').textContent = 'Ready to solve';
             document.getElementById('stats').textContent = '';
         }
@@ -468,6 +643,7 @@
         // Initialize on load
         initBoard();
         highlightStartPosition(); // Show initial start position
+        updateCellClickability(); // Enable cell clicking initially
     </script>
 </body>
 </html>
