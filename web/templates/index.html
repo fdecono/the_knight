@@ -83,6 +83,40 @@
             text-align: center;
             margin: 20px 0;
         }
+        .start-position-selector {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .start-position-selector input {
+            width: 60px;
+            padding: 8px;
+            margin: 0 5px;
+            font-size: 16px;
+            text-align: center;
+            border: 2px solid #4CAF50;
+            border-radius: 4px;
+        }
+        .start-position-selector label {
+            font-weight: bold;
+            margin: 0 10px;
+        }
+        .chessboard-cell.start-position {
+            background-color: #4CAF50 !important;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .chessboard-cell.start-position:hover {
+            background-color: #45a049 !important;
+        }
+        .chessboard-cell.selectable {
+            cursor: pointer;
+        }
+        .chessboard-cell.selectable:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+            transition: all 0.2s;
+        }
     </style>
 </head>
 <body>
@@ -91,6 +125,15 @@
     <div class="controls">
         <button id="solveBtn" onclick="startSolve()">Start Solve</button>
         <button id="resetBtn" onclick="resetBoard()">Reset</button>
+    </div>
+
+    <div class="start-position-selector">
+        <label>Starting Position:</label>
+        <label for="startX">X:</label>
+        <input type="number" id="startX" min="0" max="7" value="0" onchange="updateStartPositionFromInput()">
+        <label for="startY">Y:</label>
+        <input type="number" id="startY" min="0" max="7" value="0" onchange="updateStartPositionFromInput()">
+        <span style="margin-left: 10px; color: #666; font-size: 14px;">(Or click a cell to select)</span>
     </div>
 
     <div class="status" id="status">Ready to solve</div>
@@ -107,6 +150,7 @@
         let isSolving = false;
         let moveQueue = [];
         let renderInterval = null;
+        let startPosition = {X: 0, Y: 0};
 
         // Initialize empty board
         function initBoard() {
@@ -120,9 +164,15 @@
                 for (let j = 0; j < boardSize; j++) {
                     const cell = document.createElement('div');
                     const isLight = (i + j) % 2 === 0;
-                    cell.className = `chessboard-cell ${isLight ? 'light' : 'dark'}`;
+                    cell.className = `chessboard-cell ${isLight ? 'light' : 'dark'} selectable`;
                     cell.id = `cell-${i}-${j}`;
                     cell.textContent = '';
+                    // Make cells clickable to select starting position (only when not solving)
+                    cell.onclick = function() {
+                        if (!isSolving) {
+                            setStartPosition(i, j);
+                        }
+                    };
                     row.appendChild(cell);
                 }
                 
@@ -130,10 +180,53 @@
             }
         }
 
+        function setStartPosition(row, col) {
+            startPosition = {X: row, Y: col};
+            document.getElementById('startX').value = row;
+            document.getElementById('startY').value = col;
+            highlightStartPosition();
+        }
+
+        function updateStartPositionFromInput() {
+            const x = parseInt(document.getElementById('startX').value) || 0;
+            const y = parseInt(document.getElementById('startY').value) || 0;
+            
+            // Validate bounds
+            const validX = Math.max(0, Math.min(7, x));
+            const validY = Math.max(0, Math.min(7, y));
+            
+            startPosition = {X: validX, Y: validY};
+            document.getElementById('startX').value = validX;
+            document.getElementById('startY').value = validY;
+            highlightStartPosition();
+        }
+
+        function highlightStartPosition() {
+            // Remove previous start position highlight
+            const cells = document.querySelectorAll('.chessboard-cell');
+            cells.forEach(cell => {
+                cell.classList.remove('start-position');
+            });
+            
+            // Highlight new start position
+            const startCell = document.getElementById(`cell-${startPosition.X}-${startPosition.Y}`);
+            if (startCell) {
+                startCell.classList.add('start-position');
+                startCell.textContent = 'S'; // Mark with 'S' for Start
+            }
+        }
+
         function updateCell(row, col, value) {
             const cell = document.getElementById(`cell-${row}-${col}`);
             if (cell) {
-                cell.textContent = value > 0 ? value : '';
+                // Remove start position marker when placing a move
+                if (value > 0) {
+                    cell.textContent = value;
+                    cell.classList.remove('start-position');
+                } else if (!cell.classList.contains('start-position')) {
+                    cell.textContent = '';
+                }
+                
                 cell.classList.remove('visited', 'current');
                 
                 if (value > 0) {
@@ -152,10 +245,14 @@
             
             isSolving = true;
             document.getElementById('solveBtn').disabled = true;
+            document.getElementById('startX').disabled = true;
+            document.getElementById('startY').disabled = true;
             document.getElementById('status').textContent = 'Solving...';
             moveQueue = [];
             board = Array(boardSize).fill(null).map(() => Array(boardSize).fill(0));
             initBoard();
+            // Show start position marker (will be replaced by move 1)
+            highlightStartPosition();
 
             // Start SSE connection for moves
             const eventSource = new EventSource('/api/moves/stream');
@@ -167,6 +264,8 @@
                     eventSource.close();
                     isSolving = false;
                     document.getElementById('solveBtn').disabled = false;
+                    document.getElementById('startX').disabled = false;
+                    document.getElementById('startY').disabled = false;
                     document.getElementById('status').textContent = 
                         data.success ? 'Solution found! Rendering...' : 'No solution found';
                     
@@ -205,16 +304,18 @@
                 eventSource.close();
                 isSolving = false;
                 document.getElementById('solveBtn').disabled = false;
+                document.getElementById('startX').disabled = false;
+                document.getElementById('startY').disabled = false;
                 document.getElementById('status').textContent = 'Connection error';
             };
 
-            // Start solve request
+            // Start solve request with selected starting position
             fetch('/api/solve', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     size: boardSize,
-                    startPos: {X: 0, Y: 0}
+                    startPos: startPosition
                 })
             });
         }
@@ -246,12 +347,15 @@
             moveQueue = [];
             board = Array(boardSize).fill(null).map(() => Array(boardSize).fill(0));
             initBoard();
+            // Re-highlight start position after reset
+            highlightStartPosition();
             document.getElementById('status').textContent = 'Ready to solve';
             document.getElementById('stats').textContent = '';
         }
 
         // Initialize on load
         initBoard();
+        highlightStartPosition(); // Show initial start position
     </script>
 </body>
 </html>
