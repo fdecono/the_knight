@@ -42,12 +42,15 @@ func (s *Solver) Solve(ctx context.Context, boardSize int, startPos board.Positi
 	// Drain channels to ensure clean state
 	s.clearChannels()
 
+	// Record start time right before solving begins
 	startTime := time.Now()
+	startTimeNs := startTime.UnixNano()
 
 	// Run solver in goroutine
 	var wg sync.WaitGroup
 	var success bool
 	var solveErr error
+	var endTimeNs int64
 
 	wg.Add(1)
 
@@ -57,7 +60,9 @@ func (s *Solver) Solve(ctx context.Context, boardSize int, startPos board.Positi
 	go func() {
 		defer wg.Done()
 		success = s.solveRecursive(ctx, b, startPos, 1)
-		// If we exit without success and context not cancelled, signal failure
+		// Signal completion (success or failure)
+		// Note: solveRecursive sends doneChan internally when solution found,
+		// but we need to ensure it's sent for failure case too
 		if !success {
 			select {
 			case s.doneChan <- false:
@@ -72,6 +77,7 @@ func (s *Solver) Solve(ctx context.Context, boardSize int, startPos board.Positi
 				}
 			}
 		}
+		// If success, doneChan was already sent by solveRecursive when solution found
 	}()
 
 	// Wait for completion or context cancellation
@@ -83,17 +89,30 @@ func (s *Solver) Solve(ctx context.Context, boardSize int, startPos board.Positi
 		solveErr = ctx.Err()
 		s.clearChannels()
 		wg.Wait()
+		endTime := time.Now()
+		endTimeNs := endTime.UnixNano()
 		return &SolveResult{
 			Success:      false,
 			AttemptCount: s.getAttemptCount(),
 			Duration:     time.Since(startTime).Nanoseconds(),
+			StartTime:    startTimeNs,
+			EndTime:      endTimeNs,
 		}, solveErr
 	}
 
 	// Wait for goroutine to finish
 	wg.Wait()
 
+	// Record end time
+	endTime := time.Now()
+	endTimeNs = endTime.UnixNano()
+
+	// Calculate duration from start to finish
 	duration := time.Since(startTime).Nanoseconds()
+
+	// Debug: Log duration to verify calculation
+	// Uncomment for debugging:
+	// log.Printf("Solve duration: %d nanoseconds = %.6f milliseconds", duration, float64(duration)/1e6)
 
 	// Only keep moves if solution was successful
 	var finalMoves []MoveUpdate
@@ -115,6 +134,8 @@ func (s *Solver) Solve(ctx context.Context, boardSize int, startPos board.Positi
 		Moves:        finalMoves,
 		AttemptCount: s.getAttemptCount(),
 		Duration:     duration,
+		StartTime:    startTimeNs,
+		EndTime:      endTimeNs,
 	}, nil
 }
 

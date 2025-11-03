@@ -67,9 +67,6 @@
         .chessboard-cell.dark {
             background-color: #b58863;
         }
-        .chessboard-cell.visited {
-            background-color: #90ee90 !important;
-        }
         .chessboard-cell.current {
             background-color: #ff6b6b !important;
             animation: pulse 0.5s;
@@ -82,6 +79,28 @@
         .stats {
             text-align: center;
             margin: 20px 0;
+        }
+        .timing-info {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .timing-info h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 18px;
+        }
+        .timing-info div {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .timing-info .value {
+            font-weight: bold;
+            color: #4CAF50;
         }
         .start-position-selector {
             text-align: center;
@@ -142,6 +161,14 @@
         <div id="chessboard" class="chessboard"></div>
     </div>
 
+    <div class="timing-info" id="timingInfo" style="display: none;">
+        <h3>Timing Information</h3>
+        <div>Start Time: <span class="value" id="startTime">-</span></div>
+        <div>End Time: <span class="value" id="endTime">-</span></div>
+        <div>Duration: <span class="value" id="duration">-</span></div>
+        <div style="margin-top: 10px;">Attempts: <span class="value" id="attemptCount">-</span></div>
+    </div>
+
     <div class="stats" id="stats"></div>
 
     <script>
@@ -151,6 +178,7 @@
         let moveQueue = [];
         let renderInterval = null;
         let startPosition = {X: 0, Y: 0};
+        let totalMoves = 0; // Total moves in solution (64 for 8x8 board)
 
         // Initialize empty board
         function initBoard() {
@@ -216,6 +244,26 @@
             }
         }
 
+        // Calculate color gradient from #4CAF50 (green) to #8827a0 (purple) based on move number
+        function getMoveColor(moveNumber, totalMoves) {
+            if (totalMoves === 0 || totalMoves === 1) return '#4CAF50'; // Default starting color
+            
+            // Normalize move number to 0-1 range
+            const ratio = (moveNumber - 1) / (totalMoves - 1);
+            
+            // Starting color: #4CAF50 (green) - RGB(76, 175, 80)
+            // Ending color: #8827a0 (purple) - RGB(136, 39, 160)
+            const startR = 76, startG = 175, startB = 80;
+            const endR = 136, endG = 39, endB = 160;
+            
+            // Interpolate each RGB component
+            const r = Math.round(startR + (endR - startR) * ratio);
+            const g = Math.round(startG + (endG - startG) * ratio);
+            const b = Math.round(startB + (endB - startB) * ratio);
+            
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
         function updateCell(row, col, value) {
             const cell = document.getElementById(`cell-${row}-${col}`);
             if (cell) {
@@ -223,8 +271,13 @@
                 if (value > 0) {
                     cell.textContent = value;
                     cell.classList.remove('start-position');
+                    
+                    // Apply chromatic scale color
+                    const color = getMoveColor(value, totalMoves);
+                    cell.style.backgroundColor = color;
                 } else if (!cell.classList.contains('start-position')) {
                     cell.textContent = '';
+                    cell.style.backgroundColor = ''; // Reset to default
                 }
                 
                 cell.classList.remove('visited', 'current');
@@ -232,9 +285,14 @@
                 if (value > 0) {
                     cell.classList.add('visited');
                     cell.classList.add('current');
-                    // Remove 'current' class after animation
+                    // Remove 'current' class after animation, but keep the color
                     setTimeout(() => {
                         cell.classList.remove('current');
+                        // Ensure color persists after animation
+                        if (value > 0) {
+                            const color = getMoveColor(value, totalMoves);
+                            cell.style.backgroundColor = color;
+                        }
                     }, 500);
                 }
             }
@@ -248,8 +306,10 @@
             document.getElementById('startX').disabled = true;
             document.getElementById('startY').disabled = true;
             document.getElementById('status').textContent = 'Solving...';
+            document.getElementById('timingInfo').style.display = 'none'; // Hide timing until complete
             moveQueue = [];
             board = Array(boardSize).fill(null).map(() => Array(boardSize).fill(0));
+            totalMoves = boardSize * boardSize; // Set total moves for color calculation
             initBoard();
             // Show start position marker (will be replaced by move 1)
             highlightStartPosition();
@@ -276,12 +336,59 @@
                             .then(result => {
                                 if (result.Success && result.Moves) {
                                     moveQueue = result.Moves.filter(m => !m.IsBacktrack);
+                                    
+                                    // Display timing information from backend
+                                    // Backend provides StartTime and EndTime as Unix timestamps in nanoseconds
+                                    // Convert to Date objects and calculate duration
+                                    const startTimeNs = BigInt(result.StartTime);
+                                    const endTimeNs = BigInt(result.EndTime);
+                                    
+                                    // Convert nanoseconds to milliseconds for Date constructor
+                                    const startTimeMs = Number(startTimeNs / BigInt(1000000));
+                                    const endTimeMs = Number(endTimeNs / BigInt(1000000));
+                                    const startTime = new Date(startTimeMs);
+                                    const endTime = new Date(endTimeMs);
+                                    
+                                    // Calculate duration: (EndTime - StartTime) in nanoseconds, then convert to milliseconds
+                                    const durationNs = Number(endTimeNs - startTimeNs);
+                                    const durationMs = durationNs / 1000000; // Convert nanoseconds to milliseconds
+                                    
+                                    // Format times with milliseconds
+                                    const formatTime = (date) => {
+                                        const hours = date.getHours().toString().padStart(2, '0');
+                                        const minutes = date.getMinutes().toString().padStart(2, '0');
+                                        const seconds = date.getSeconds().toString().padStart(2, '0');
+                                        const ms = date.getMilliseconds().toString().padStart(3, '0');
+                                        return `${hours}:${minutes}:${seconds}.${ms}`;
+                                    };
+                                    
+                                    document.getElementById('startTime').textContent = formatTime(startTime);
+                                    document.getElementById('endTime').textContent = formatTime(endTime);
+                                    
+                                    // Format duration in milliseconds
+                                    let durationText;
+                                    if (durationMs < 0.001) {
+                                        // For very fast solves (< 1 microsecond), show with more precision
+                                        durationText = durationMs.toFixed(6) + ' ms';
+                                    } else if (durationMs < 1) {
+                                        // For fast solves (< 1ms), show 3 decimal places
+                                        durationText = durationMs.toFixed(3) + ' ms';
+                                    } else {
+                                        // For slower solves, show 2 decimal places
+                                        durationText = durationMs.toFixed(2) + ' ms';
+                                    }
+                                    document.getElementById('duration').textContent = durationText;
+                                    document.getElementById('attemptCount').textContent = result.AttemptCount.toLocaleString();
+                                    
+                                    document.getElementById('timingInfo').style.display = 'block';
+                                    
                                     renderMovesAnimated();
                                 }
                             });
                     } else {
                         // Clear board on failure
                         initBoard();
+                        document.getElementById('timingInfo').style.display = 'none';
                     }
                     return;
                 }
@@ -323,6 +430,10 @@
         function renderMovesAnimated() {
             if (renderInterval) clearInterval(renderInterval);
             
+            // Reset board and colors for animated replay
+            initBoard();
+            board = Array(boardSize).fill(null).map(() => Array(boardSize).fill(0));
+            
             let moveIndex = 0;
             
             renderInterval = setInterval(() => {
@@ -336,7 +447,7 @@
                 board[move.Position.Y][move.Position.X] = move.MoveNumber;
                 updateCell(move.Position.Y, move.Position.X, move.MoveNumber);
                 moveIndex++;
-            }, 250); // 0.5 seconds between moves
+            }, 250); // 0.25 seconds between moves
         }
 
         function resetBoard() {
@@ -346,6 +457,7 @@
             }
             moveQueue = [];
             board = Array(boardSize).fill(null).map(() => Array(boardSize).fill(0));
+            document.getElementById('timingInfo').style.display = 'none';
             initBoard();
             // Re-highlight start position after reset
             highlightStartPosition();
